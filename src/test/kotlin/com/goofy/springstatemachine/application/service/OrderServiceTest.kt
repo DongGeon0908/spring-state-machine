@@ -3,6 +3,7 @@ package com.goofy.springstatemachine.application.service
 import com.goofy.springstatemachine.domain.model.Order
 import com.goofy.springstatemachine.domain.model.OrderEvent
 import com.goofy.springstatemachine.domain.model.OrderState
+import com.goofy.springstatemachine.domain.service.OrderStateMachineService
 import com.goofy.springstatemachine.infrastructure.entity.OrderEntity
 import com.goofy.springstatemachine.infrastructure.entity.OrderItemEntity
 import com.goofy.springstatemachine.infrastructure.repository.OrderItemRepository
@@ -40,13 +41,7 @@ class OrderServiceTest {
     private lateinit var orderStateTransitionRepository: OrderStateTransitionRepository
 
     @Mock
-    private lateinit var stateMachineFactory: StateMachineFactory<OrderState, OrderEvent>
-
-    @Mock
-    private lateinit var stateMachinePersistenceService: StateMachinePersistenceService
-
-    @Mock
-    private lateinit var stateMachine: StateMachine<OrderState, OrderEvent>
+    private lateinit var orderStateMachineService: OrderStateMachineService
 
     @InjectMocks
     private lateinit var orderService: OrderService
@@ -58,10 +53,7 @@ class OrderServiceTest {
 
     @BeforeEach
     fun setUp() {
-        // 상태 머신 설정 - using lenient() to avoid "unnecessary stubbing" errors
-        lenient().`when`(stateMachineFactory.getStateMachine(anyString())).thenReturn(stateMachine)
-        lenient().`when`(stateMachine.state).thenReturn(mock())
-        lenient().`when`(stateMachine.state.id).thenReturn(OrderState.CREATED)
+        // 기본 설정은 여기서 하지 않고, 각 테스트 메서드에서 필요한 설정을 직접 합니다.
     }
 
     /**
@@ -110,6 +102,9 @@ class OrderServiceTest {
         // Using lenient() to avoid "unnecessary stubbing" errors
         lenient().`when`(orderItemRepository.findByOrderId(testOrderId)).thenReturn(listOf(savedOrderItemEntity))
 
+        // OrderStateMachineService mock 설정
+        `when`(orderStateMachineService.initializeStateMachine(anyString())).thenReturn(OrderState.CREATED)
+
         // When
         val result = orderService.createOrder(order)
 
@@ -122,14 +117,9 @@ class OrderServiceTest {
         assertEquals(OrderState.CREATED, result.state)
         assertEquals(1, result.items.size)
 
-        // 상태 머신 검증
-        // We can't verify the exact order number since it's generated dynamically
-        // So we'll just verify that the methods were called at least once
-        verify(stateMachineFactory, atLeastOnce()).getStateMachine(anyString())
-        verify(stateMachine).start()
-
-        // Note: We're not verifying the persist method call due to issues with matchers
-        // The test is still valid without this verification
+        // 상태 머신 서비스 검증
+        // 주문 번호는 동적으로 생성되므로 정확한 값을 검증할 수 없음
+        verify(orderStateMachineService).initializeStateMachine(anyString())
     }
 
     /**
@@ -169,6 +159,10 @@ class OrderServiceTest {
         `when`(orderItemRepository.findByOrderId(testOrderId)).thenReturn(listOf(orderItemEntity))
         `when`(orderStateTransitionRepository.save(any())).thenReturn(mock())
 
+        // OrderStateMachineService mock 설정
+        `when`(orderStateMachineService.canFireEvent(OrderState.CREATED, OrderEvent.SUBMIT_PAYMENT)).thenReturn(true)
+        `when`(orderStateMachineService.sendEvent(testOrderNumber, OrderEvent.SUBMIT_PAYMENT)).thenReturn(OrderState.PAYMENT_PENDING)
+
         // When
         val result = orderService.changeOrderState(testOrderNumber, OrderEvent.SUBMIT_PAYMENT)
 
@@ -178,11 +172,9 @@ class OrderServiceTest {
         assertEquals(testOrderNumber, result.orderNumber)
         assertEquals(OrderState.PAYMENT_PENDING, result.state)
 
-        // 상태 머신 검증
-        verify(stateMachineFactory).getStateMachine(testOrderNumber)
-        verify(stateMachinePersistenceService).restore(stateMachine, testOrderNumber)
-        verify(stateMachine).sendEvent(OrderEvent.SUBMIT_PAYMENT)
-        verify(stateMachinePersistenceService).persist(stateMachine, testOrderNumber)
+        // 상태 머신 서비스 검증
+        verify(orderStateMachineService).canFireEvent(OrderState.CREATED, OrderEvent.SUBMIT_PAYMENT)
+        verify(orderStateMachineService).sendEvent(testOrderNumber, OrderEvent.SUBMIT_PAYMENT)
     }
 
     /**
@@ -204,6 +196,9 @@ class OrderServiceTest {
 
         // Mock 설정
         `when`(orderRepository.findByOrderNumber(testOrderNumber)).thenReturn(Optional.of(orderEntity))
+        // 배송 완료 상태에서는 취소 이벤트를 발생시킬 수 없음
+        `when`(orderStateMachineService.canFireEvent(OrderState.DELIVERED, OrderEvent.CANCEL)).thenReturn(false)
+        // 이 테스트에서는 sendEvent가 호출되지 않아야 함
 
         // When & Then
         val exception = assertThrows(IllegalStateException::class.java) {
@@ -213,6 +208,6 @@ class OrderServiceTest {
         assertTrue(exception.message!!.contains("현재 상태(${OrderState.DELIVERED})에서 이벤트(${OrderEvent.CANCEL})를 발생시킬 수 없습니다."))
 
         // Verify that sendEvent is not called since an exception is thrown before that
-        verify(stateMachine, never()).sendEvent(any<OrderEvent>())
+        verifyNoMoreInteractions(orderStateMachineService)
     }
 }
