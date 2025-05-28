@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: spring-state-machine
+  datasource:
+    url: jdbc:mysql://localhost:3306/state_machine?useSSL=false&serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    username: root
+    password: root1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+logging:
+  level:
+    org.springframework.statemachine: DEBUG
+    com.goofy.springstatemachine: DEBUG
