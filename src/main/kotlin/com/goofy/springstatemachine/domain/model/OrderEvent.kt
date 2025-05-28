@@ -55,23 +55,37 @@ package com.goofy.springstatemachine.domain.model
  * 각 이벤트는 특정 상태에서만 유효하며, 유효하지 않은 상태에서 이벤트가 발생하면 상태 전이가 일어나지 않습니다.
  */
 enum class OrderEvent {
-    // 기본 이벤트
-    SUBMIT_PAYMENT,      // 결제 제출 - CREATED 상태에서 PAYMENT_PENDING 상태로 전이
-    PAYMENT_SUCCEEDED,   // 결제 성공 - PAYMENT_PENDING 상태에서 PAID 상태로 전이
-    PAYMENT_FAILED,      // 결제 실패 - PAYMENT_PENDING 상태에서 CREATED 상태로 전이
-    PREPARE,             // 상품 준비 시작 - PAID 상태에서 PREPARING 상태로 전이
-    SHIP,                // 배송 시작 - PREPARING 상태에서 SHIPPED 상태로 전이
-    DELIVER,             // 배송 완료 처리 - SHIPPED 상태에서 DELIVERED 상태로 전이
-    CANCEL,              // 주문 취소 요청 - 여러 상태에서 CANCELLED 상태로 전이
-    REFUND,              // 환불 처리 - CANCELLED 상태에서 REFUNDED 상태로 전이
+    /** 기본 이벤트 */
+    /** 결제 제출 - CREATED 상태에서 PAYMENT_PENDING 상태로 전이 */
+    SUBMIT_PAYMENT,
+    /** 결제 성공 - PAYMENT_PENDING 상태에서 PAID 상태로 전이 */
+    PAYMENT_SUCCEEDED,
+    /** 결제 실패 - PAYMENT_PENDING 상태에서 CREATED 상태로 전이 */
+    PAYMENT_FAILED,
+    /** 상품 준비 시작 - PAID 상태에서 PREPARING 상태로 전이 */
+    PREPARE,
+    /** 배송 시작 - PREPARING 상태에서 SHIPPED 상태로 전이 */
+    SHIP,
+    /** 배송 완료 처리 - SHIPPED 상태에서 DELIVERED 상태로 전이 */
+    DELIVER,
+    /** 주문 취소 요청 - 여러 상태에서 CANCELLED 상태로 전이 */
+    CANCEL,
+    /** 환불 처리 - CANCELLED 상태에서 REFUNDED 상태로 전이 */
+    REFUND,
 
-    // 선택 상태 이벤트
-    SELECT_PAYMENT_METHOD, // 결제 방법 선택 - CREATED 상태에서 PAYMENT_CHOICE 상태로 전이
-    CREDIT_CARD,         // 신용카드 결제 선택 - PAYMENT_CHOICE 상태에서 PAYMENT_PENDING 상태로 전이
-    BANK_TRANSFER,       // 계좌이체 결제 선택 - PAYMENT_CHOICE 상태에서 PAYMENT_PENDING 상태로 전이
+    /** 선택 상태 이벤트 */
+    /** 결제 방법 선택 - CREATED 상태에서 PAYMENT_CHOICE 상태로 전이 */
+    SELECT_PAYMENT_METHOD,
+    /** 신용카드 결제 선택 - PAYMENT_CHOICE 상태에서 PAYMENT_PENDING 상태로 전이 */
+    CREDIT_CARD,
+    /** 계좌이체 결제 선택 - PAYMENT_CHOICE 상태에서 PAYMENT_PENDING 상태로 전이 */
+    BANK_TRANSFER,
 
-    // 정션 상태 이벤트
-    CHECK_SHIPPING,      // 배송 조건 확인 - PAID 상태에서 SHIPPING_JUNCTION 상태로 전이
-    EXPEDITE,            // 빠른 배송 선택 - SHIPPING_JUNCTION 상태에서 PREPARING 상태로 전이
-    STANDARD             // 일반 배송 선택 - SHIPPING_JUNCTION 상태에서 PREPARING 상태로 전이
+    /** 정션 상태 이벤트 */
+    /** 배송 조건 확인 - PAID 상태에서 SHIPPING_JUNCTION 상태로 전이 */
+    CHECK_SHIPPING,
+    /** 빠른 배송 선택 - SHIPPING_JUNCTION 상태에서 PREPARING 상태로 전이 */
+    EXPEDITE,
+    /** 일반 배송 선택 - SHIPPING_JUNCTION 상태에서 PREPARING 상태로 전이 */
+    STANDARD
 }

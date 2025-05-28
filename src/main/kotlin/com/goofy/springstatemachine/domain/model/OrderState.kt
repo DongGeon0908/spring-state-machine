@@ -26,17 +26,27 @@ package com.goofy.springstatemachine.domain.model
  * 예를 들어, DELIVERED 상태의 주문은 더 이상 취소할 수 없습니다.
  */
 enum class OrderState {
-    // 기본 상태
-    CREATED,           // 주문 생성됨 - 초기 상태, 결제 또는 취소 가능
-    PAYMENT_PENDING,   // 결제 대기 중 - 결제 진행 중
-    PAID,              // 결제 완료 - 배송 시작 또는 취소 가능
-    PREPARING,         // 상품 준비 중 - 배송 준비 중
-    SHIPPED,           // 배송 중 - 배송 완료 처리만 가능
-    DELIVERED,         // 배송 완료 - 최종 상태, 더 이상 변경 불가
-    CANCELLED,         // 주문 취소 - 최종 상태, 더 이상 변경 불가
-    REFUNDED,          // 환불 완료 - 취소 후 환불 처리된 상태
+    /** 기본 상태 */
+    /** 주문 생성됨 - 초기 상태, 결제 또는 취소 가능 */
+    CREATED,
+    /** 결제 대기 중 - 결제 진행 중 */
+    PAYMENT_PENDING,
+    /** 결제 완료 - 배송 시작 또는 취소 가능 */
+    PAID,
+    /** 상품 준비 중 - 배송 준비 중 */
+    PREPARING,
+    /** 배송 중 - 배송 완료 처리만 가능 */
+    SHIPPED,
+    /** 배송 완료 - 최종 상태, 더 이상 변경 불가 */
+    DELIVERED,
+    /** 주문 취소 - 최종 상태, 더 이상 변경 불가 */
+    CANCELLED,
+    /** 환불 완료 - 취소 후 환불 처리된 상태 */
+    REFUNDED,
 
-    // 특수 상태 (선택 및 정션 상태)
-    PAYMENT_CHOICE,    // 결제 방법 선택 (선택 상태)
-    SHIPPING_JUNCTION  // 배송 분기점 (정션 상태)
+    /** 특수 상태 (선택 및 정션 상태) */
+    /** 결제 방법 선택 (선택 상태) */
+    PAYMENT_CHOICE,
+    /** 배송 분기점 (정션 상태) */
+    SHIPPING_JUNCTION
 }

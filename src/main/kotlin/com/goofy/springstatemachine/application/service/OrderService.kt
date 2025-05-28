@@ -66,23 +66,24 @@ class OrderService(
      */
     @Transactional
     fun createOrder(order: Order): Order {
-        // 1. 주문 번호 생성 - 고유한 주문 식별자
+        /** 1. 주문 번호 생성 - 고유한 주문 식별자 */
         val orderNumber = generateOrderNumber()
 
-        // 2. 주문 엔티티 생성 및 저장 - 초기 상태는 CREATED
+        /** 2. 주문 엔티티 생성 및 저장 - 초기 상태는 CREATED */
         val orderEntity = OrderEntity(
             orderNumber = orderNumber,
             customerName = order.customerName,
             customerEmail = order.customerEmail,
             amount = order.amount,
-            state = OrderState.CREATED,  // 초기 상태 설정
+            /** 초기 상태 설정 */
+            state = OrderState.CREATED,
             createdAt = LocalDateTime.now(),
             updatedAt = LocalDateTime.now()
         )
 
         val savedOrder = orderRepository.save(orderEntity)
 
-        // 3. 주문 항목 저장 - 주문에 포함된 상품 정보
+        /** 3. 주문 항목 저장 - 주문에 포함된 상품 정보 */
         val orderItems = order.items.map { item ->
             OrderItemEntity(
                 orderId = savedOrder.id!!,
@@ -95,11 +96,12 @@ class OrderService(
 
         orderItemRepository.saveAll(orderItems)
 
-        // 4. 상태 머신 초기화 및 시작
-        // - 주문 상태 머신 서비스를 통해 상태 머신 초기화
+        /** 4. 상태 머신 초기화 및 시작
+         * - 주문 상태 머신 서비스를 통해 상태 머신 초기화
+         */
         orderStateMachineService.initializeStateMachine(orderNumber)
 
-        // 6. 도메인 모델로 변환하여 반환
+        /** 6. 도메인 모델로 변환하여 반환 */
         return mapToOrderDomain(savedOrder, orderItems)
     }
 
@@ -133,22 +135,22 @@ class OrderService(
      */
     @Transactional
     fun changeOrderState(orderNumber: String, event: OrderEvent): Order {
-        // 1. 주문 조회 - 주문 번호로 주문 엔티티 조회
+        /** 1. 주문 조회 - 주문 번호로 주문 엔티티 조회 */
         val orderEntity = orderRepository.findByOrderNumber(orderNumber)
             .orElseThrow { NoSuchElementException("주문을 찾을 수 없습니다: $orderNumber") }
 
-        // 3. 현재 상태 확인 - 주문 엔티티의 현재 상태
+        /** 3. 현재 상태 확인 - 주문 엔티티의 현재 상태 */
         val sourceState = orderEntity.state
 
-        // 4. 이벤트 발생 가능 여부 확인 - 현재 상태에서 이벤트 발생 가능 여부 검사
+        /** 4. 이벤트 발생 가능 여부 확인 - 현재 상태에서 이벤트 발생 가능 여부 검사 */
         if (!orderStateMachineService.canFireEvent(sourceState, event)) {
             throw IllegalStateException("현재 상태(${sourceState})에서 이벤트(${event})를 발생시킬 수 없습니다.")
         }
 
-        // 5. 이벤트 발생 - 상태 머신 서비스를 통해 이벤트 발생
+        /** 5. 이벤트 발생 - 상태 머신 서비스를 통해 이벤트 발생 */
         val targetState = orderStateMachineService.sendEvent(orderNumber, event)
 
-        // 7. 주문 상태 업데이트 - 주문 엔티티의 상태 필드 업데이트
+        /** 7. 주문 상태 업데이트 - 주문 엔티티의 상태 필드 업데이트 */
         val updatedOrderEntity = orderEntity.copy(
             state = targetState,
             updatedAt = LocalDateTime.now()
@@ -156,23 +158,27 @@ class OrderService(
 
         val savedOrder = orderRepository.save(updatedOrderEntity)
 
-        // 8. 상태 전이 이력 저장 - 상태 변경 이력을 데이터베이스에 저장
+        /** 8. 상태 전이 이력 저장 - 상태 변경 이력을 데이터베이스에 저장 */
         val stateTransition = OrderStateTransitionEntity(
             orderId = savedOrder.id!!,
-            sourceState = sourceState,     // 이전 상태
-            targetState = targetState,     // 새로운 상태
-            event = event,                 // 발생 이벤트
-            transitionTime = LocalDateTime.now()  // 전이 시간
+            /** 이전 상태 */
+            sourceState = sourceState,
+            /** 새로운 상태 */
+            targetState = targetState,
+            /** 발생 이벤트 */
+            event = event,
+            /** 전이 시간 */
+            transitionTime = LocalDateTime.now()
         )
 
         orderStateTransitionRepository.save(stateTransition)
 
-        // 상태 머신 상태 저장은 orderStateMachineService.sendEvent 메서드에서 이미 처리됨
+        /** 상태 머신 상태 저장은 orderStateMachineService.sendEvent 메서드에서 이미 처리됨 */
 
-        // 10. 주문 항목 조회 - 주문에 포함된 상품 정보 조회
+        /** 10. 주문 항목 조회 - 주문에 포함된 상품 정보 조회 */
         val orderItems = orderItemRepository.findByOrderId(savedOrder.id!!)
 
-        // 11. 도메인 모델로 변환하여 반환
+        /** 11. 도메인 모델로 변환하여 반환 */
         return mapToOrderDomain(savedOrder, orderItems)
     }
 
@@ -234,7 +240,7 @@ class OrderService(
         return "ORD-$timestamp-$random"
     }
 
-    // 이벤트 발생 가능 여부 확인 및 대상 상태 확인 로직은 OrderStateMachineService로 이동됨
+    /** 이벤트 발생 가능 여부 확인 및 대상 상태 확인 로직은 OrderStateMachineService로 이동됨 */
 
     /**
      * 엔티티를 도메인 모델로 변환

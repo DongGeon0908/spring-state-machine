@@ -35,19 +35,19 @@ class OrderStateMachineServiceImpl(
      * @return 초기화된 상태 (CREATED)
      */
     override fun initializeStateMachine(orderNumber: String): OrderState {
-        // 상태 머신 생성
+        /** 상태 머신 생성 */
         val stateMachine = stateMachineFactory.getStateMachine(orderNumber)
-        
-        // 상태 머신 시작 (초기 상태: CREATED)
+
+        /** 상태 머신 시작 (초기 상태: CREATED) */
         stateMachine.start()
-        
-        // 상태 머신 상태를 Redis에 저장
+
+        /** 상태 머신 상태를 Redis에 저장 */
         stateMachinePersistenceService.persist(stateMachine, orderNumber)
-        
-        // 초기 상태 반환
+
+        /** 초기 상태 반환 */
         return OrderState.CREATED
     }
-    
+
     /**
      * 주문 상태 머신에 이벤트를 발생시켜 상태 전이를 수행합니다.
      * 
@@ -61,25 +61,25 @@ class OrderStateMachineServiceImpl(
      * @return 이벤트 처리 후의 새로운 상태
      */
     override fun sendEvent(orderNumber: String, event: OrderEvent): OrderState {
-        // 상태 머신 복원
+        /** 상태 머신 복원 */
         val stateMachine = stateMachineFactory.getStateMachine(orderNumber)
         stateMachinePersistenceService.restore(stateMachine, orderNumber)
-        
-        // 이벤트 발생
+
+        /** 이벤트 발생 */
         val eventAccepted = stateMachine.sendEvent(event)
-        
+
         if (!eventAccepted) {
             logger.warn("이벤트가 수락되지 않았습니다: $event, 주문 번호: $orderNumber")
             throw IllegalStateException("이벤트 처리 실패: $event")
         }
-        
-        // 변경된 상태 머신 상태를 Redis에 저장
+
+        /** 변경된 상태 머신 상태를 Redis에 저장 */
         stateMachinePersistenceService.persist(stateMachine, orderNumber)
-        
-        // 새로운 상태 반환
+
+        /** 새로운 상태 반환 */
         return stateMachine.state.id
     }
-    
+
     /**
      * 현재 상태에서 특정 이벤트를 발생시킬 수 있는지 확인합니다.
      * 
@@ -102,7 +102,7 @@ class OrderStateMachineServiceImpl(
             OrderState.DELIVERED, OrderState.REFUNDED -> false
         }
     }
-    
+
     /**
      * 특정 이벤트가 발생했을 때 예상되는 다음 상태를 반환합니다.
      * 

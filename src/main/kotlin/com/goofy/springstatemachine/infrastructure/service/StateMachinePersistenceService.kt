@@ -32,7 +32,8 @@ class StateMachinePersistenceService(
 ) {
     companion object {
         private const val REDIS_KEY_PREFIX = "order:state:"
-        private const val EXPIRATION_TIME = 24L * 60L * 60L // 24시간 (초 단위)
+        /** 24시간 (초 단위) */
+        private const val EXPIRATION_TIME = 24L * 60L * 60L
     }
 
     /**
@@ -53,16 +54,16 @@ class StateMachinePersistenceService(
      */
     fun persist(stateMachine: StateMachine<OrderState, OrderEvent>, orderId: String) {
         try {
-            // 상태 머신에서 현재 상태 가져오기
+            /** 상태 머신에서 현재 상태 가져오기 */
             val state = stateMachine.state.id
 
-            // Redis 키 생성
+            /** Redis 키 생성 */
             val key = getKey(orderId)
 
-            // 상태 이름을 Redis에 저장
+            /** 상태 이름을 Redis에 저장 */
             redisTemplate.opsForValue().set(key, state.name)
 
-            // 만료 시간 설정 (24시간)
+            /** 만료 시간 설정 (24시간) */
             redisTemplate.expire(key, EXPIRATION_TIME, TimeUnit.SECONDS)
         } catch (e: Exception) {
             throw RuntimeException("상태 머신 저장 중 오류 발생: ${e.message}", e)
@@ -98,20 +99,20 @@ class StateMachinePersistenceService(
 
         while (retryCount < maxRetries) {
             try {
-                // Redis 키 생성
+                /** Redis 키 생성 */
                 val key = getKey(orderId)
 
-                // Redis에서 상태 값 조회
+                /** Redis에서 상태 값 조회 */
                 val stateValue = redisTemplate.opsForValue().get(key) as? String
 
-                // 상태 머신 시작 (초기 상태: CREATED)
+                /** 상태 머신 시작 (초기 상태: CREATED) */
                 try {
                     stateMachine.start()
                 } catch (e: Exception) {
                     logger.debug("상태 머신이 이미 실행 중이거나 시작할 수 없습니다: ${e.message}")
                 }
 
-                // 상태 값이 존재하면 OrderState 열거형으로 변환하고 상태 머신에 적용
+                /** 상태 값이 존재하면 OrderState 열거형으로 변환하고 상태 머신에 적용 */
                 if (stateValue != null) {
                     try {
                         val targetState = OrderState.valueOf(stateValue)
@@ -119,21 +120,21 @@ class StateMachinePersistenceService(
 
                         logger.info("상태 복원 시도: 주문 ID=$orderId, 현재 상태=$currentState, 목표 상태=$targetState")
 
-                        // 현재 상태와 목표 상태가 다른 경우에만 상태 전이 시도
+                        /** 현재 상태와 목표 상태가 다른 경우에만 상태 전이 시도 */
                         if (currentState != targetState) {
-                            // 상태 전이 경로 결정 및 이벤트 발생
+                            /** 상태 전이 경로 결정 및 이벤트 발생 */
                             transitionToTargetState(stateMachine, currentState, targetState)
                         }
 
                         logger.info("상태 머신 복원 완료: 주문 ID=$orderId, 상태=${stateMachine.state.id}")
                         return stateMachine
                     } catch (e: IllegalArgumentException) {
-                        // 잘못된 상태 값인 경우 (예: 열거형에 없는 값)
+                        /** 잘못된 상태 값인 경우 (예: 열거형에 없는 값) */
                         logger.warn("잘못된 상태 값: $stateValue, 기본 상태(CREATED)로 초기화합니다.")
                         return stateMachine  // 이미 CREATED 상태로 시작됨
                     }
                 } else {
-                    // 저장된 상태가 없는 경우 기본 상태(CREATED)로 시작
+                    /** 저장된 상태가 없는 경우 기본 상태(CREATED)로 시작 */
                     logger.info("저장된 상태 없음: 주문 ID=$orderId, 기본 상태(CREATED)로 초기화합니다.")
                     return stateMachine  // 이미 CREATED 상태로 시작됨
                 }
@@ -142,14 +143,14 @@ class StateMachinePersistenceService(
                 retryCount++
 
                 if (retryCount < maxRetries) {
-                    // 재시도 전 잠시 대기
+                    /** 재시도 전 잠시 대기 */
                     Thread.sleep(100 * retryCount.toLong())
                     logger.warn("상태 머신 복원 재시도 ($retryCount/$maxRetries): ${e.message}")
                 }
             }
         }
 
-        // 모든 재시도 실패 후
+        /** 모든 재시도 실패 후 */
         logger.error("상태 머신 복원 실패 (최대 재시도 횟수 초과): ${lastException?.message}")
         throw RuntimeException("상태 머신 복원 중 오류 발생: ${lastException?.message}", lastException)
     }
@@ -168,10 +169,10 @@ class StateMachinePersistenceService(
         currentState: OrderState,
         targetState: OrderState
     ) {
-        // 상태 전이 경로 결정
+        /** 상태 전이 경로 결정 */
         val transitionPath = determineTransitionPath(currentState, targetState)
 
-        // 경로에 따라 이벤트 발생
+        /** 경로에 따라 이벤트 발생 */
         for (event in transitionPath) {
             logger.debug("이벤트 발생: $event (현재 상태: ${stateMachine.state.id})")
 
@@ -186,7 +187,7 @@ class StateMachinePersistenceService(
                 break
             }
 
-            // 이벤트 처리 시간 부여
+            /** 이벤트 처리 시간 부여 */
             Thread.sleep(50)
         }
     }
@@ -201,86 +202,88 @@ class StateMachinePersistenceService(
      * @return 필요한 이벤트 목록
      */
     private fun determineTransitionPath(currentState: OrderState, targetState: OrderState): List<OrderEvent> {
-        // 상태 전이 경로 맵
+        /** 상태 전이 경로 맵 */
         val transitionPaths = mapOf(
-            // CREATED -> PAYMENT_PENDING
+            /** CREATED -> PAYMENT_PENDING */
             Pair(OrderState.CREATED, OrderState.PAYMENT_PENDING) to listOf(OrderEvent.SUBMIT_PAYMENT),
 
-            // CREATED -> PAYMENT_CHOICE
+            /** CREATED -> PAYMENT_CHOICE */
             Pair(OrderState.CREATED, OrderState.PAYMENT_CHOICE) to listOf(OrderEvent.SELECT_PAYMENT_METHOD),
 
-            // CREATED -> PAID
+            /** CREATED -> PAID */
             Pair(OrderState.CREATED, OrderState.PAID) to listOf(OrderEvent.SUBMIT_PAYMENT, OrderEvent.PAYMENT_SUCCEEDED),
 
-            // CREATED -> PREPARING
+            /** CREATED -> PREPARING */
             Pair(OrderState.CREATED, OrderState.PREPARING) to listOf(OrderEvent.SUBMIT_PAYMENT, OrderEvent.PAYMENT_SUCCEEDED, OrderEvent.PREPARE),
 
-            // CREATED -> SHIPPED
+            /** CREATED -> SHIPPED */
             Pair(OrderState.CREATED, OrderState.SHIPPED) to listOf(OrderEvent.SUBMIT_PAYMENT, OrderEvent.PAYMENT_SUCCEEDED, OrderEvent.PREPARE, OrderEvent.SHIP),
 
-            // CREATED -> DELIVERED
+            /** CREATED -> DELIVERED */
             Pair(OrderState.CREATED, OrderState.DELIVERED) to listOf(OrderEvent.SUBMIT_PAYMENT, OrderEvent.PAYMENT_SUCCEEDED, OrderEvent.PREPARE, OrderEvent.SHIP, OrderEvent.DELIVER),
 
-            // CREATED -> CANCELLED
+            /** CREATED -> CANCELLED */
             Pair(OrderState.CREATED, OrderState.CANCELLED) to listOf(OrderEvent.CANCEL),
 
-            // PAYMENT_CHOICE -> PAYMENT_PENDING (Credit Card)
+            /** PAYMENT_CHOICE -> PAYMENT_PENDING (Credit Card) */
             Pair(OrderState.PAYMENT_CHOICE, OrderState.PAYMENT_PENDING) to listOf(OrderEvent.CREDIT_CARD),
 
-            // PAYMENT_CHOICE -> PAYMENT_PENDING (Bank Transfer)
-            // Note: This is a separate entry for the same transition but with a different event
-            // In practice, only one of these would be used based on the user's choice
+            /** PAYMENT_CHOICE -> PAYMENT_PENDING (Bank Transfer)
+             * Note: This is a separate entry for the same transition but with a different event
+             * In practice, only one of these would be used based on the user's choice
+             */
             Pair(OrderState.PAYMENT_CHOICE, OrderState.PAYMENT_PENDING) to listOf(OrderEvent.BANK_TRANSFER),
 
-            // PAYMENT_PENDING -> PAID
+            /** PAYMENT_PENDING -> PAID */
             Pair(OrderState.PAYMENT_PENDING, OrderState.PAID) to listOf(OrderEvent.PAYMENT_SUCCEEDED),
 
-            // PAYMENT_PENDING -> CREATED (Payment Failed)
+            /** PAYMENT_PENDING -> CREATED (Payment Failed) */
             Pair(OrderState.PAYMENT_PENDING, OrderState.CREATED) to listOf(OrderEvent.PAYMENT_FAILED),
 
-            // PAYMENT_PENDING -> CANCELLED
+            /** PAYMENT_PENDING -> CANCELLED */
             Pair(OrderState.PAYMENT_PENDING, OrderState.CANCELLED) to listOf(OrderEvent.CANCEL),
 
-            // PAID -> PREPARING
+            /** PAID -> PREPARING */
             Pair(OrderState.PAID, OrderState.PREPARING) to listOf(OrderEvent.PREPARE),
 
-            // PAID -> SHIPPING_JUNCTION
+            /** PAID -> SHIPPING_JUNCTION */
             Pair(OrderState.PAID, OrderState.SHIPPING_JUNCTION) to listOf(OrderEvent.CHECK_SHIPPING),
 
-            // PAID -> SHIPPED
+            /** PAID -> SHIPPED */
             Pair(OrderState.PAID, OrderState.SHIPPED) to listOf(OrderEvent.PREPARE, OrderEvent.SHIP),
 
-            // PAID -> DELIVERED
+            /** PAID -> DELIVERED */
             Pair(OrderState.PAID, OrderState.DELIVERED) to listOf(OrderEvent.PREPARE, OrderEvent.SHIP, OrderEvent.DELIVER),
 
-            // PAID -> CANCELLED
+            /** PAID -> CANCELLED */
             Pair(OrderState.PAID, OrderState.CANCELLED) to listOf(OrderEvent.CANCEL),
 
-            // SHIPPING_JUNCTION -> PREPARING (Expedite)
+            /** SHIPPING_JUNCTION -> PREPARING (Expedite) */
             Pair(OrderState.SHIPPING_JUNCTION, OrderState.PREPARING) to listOf(OrderEvent.EXPEDITE),
 
-            // SHIPPING_JUNCTION -> PREPARING (Standard)
-            // Note: This is a separate entry for the same transition but with a different event
-            // In practice, only one of these would be used based on the shipping choice
+            /** SHIPPING_JUNCTION -> PREPARING (Standard)
+             * Note: This is a separate entry for the same transition but with a different event
+             * In practice, only one of these would be used based on the shipping choice
+             */
             Pair(OrderState.SHIPPING_JUNCTION, OrderState.PREPARING) to listOf(OrderEvent.STANDARD),
 
-            // PREPARING -> SHIPPED
+            /** PREPARING -> SHIPPED */
             Pair(OrderState.PREPARING, OrderState.SHIPPED) to listOf(OrderEvent.SHIP),
 
-            // PREPARING -> CANCELLED
+            /** PREPARING -> CANCELLED */
             Pair(OrderState.PREPARING, OrderState.CANCELLED) to listOf(OrderEvent.CANCEL),
 
-            // SHIPPED -> DELIVERED
+            /** SHIPPED -> DELIVERED */
             Pair(OrderState.SHIPPED, OrderState.DELIVERED) to listOf(OrderEvent.DELIVER),
 
-            // CANCELLED -> REFUNDED
+            /** CANCELLED -> REFUNDED */
             Pair(OrderState.CANCELLED, OrderState.REFUNDED) to listOf(OrderEvent.REFUND)
         )
 
-        // 경로 조회
+        /** 경로 조회 */
         val path = transitionPaths[Pair(currentState, targetState)]
 
-        // 경로가 없는 경우 (예: DELIVERED -> PAID는 불가능)
+        /** 경로가 없는 경우 (예: DELIVERED -> PAID는 불가능) */
         if (path == null) {
             logger.warn("상태 전이 경로 없음: $currentState -> $targetState")
             return emptyList()
@@ -307,6 +310,7 @@ class StateMachinePersistenceService(
      * @return 생성된 Redis 키
      */
     private fun getKey(orderId: String): String {
-        return REDIS_KEY_PREFIX + orderId  // "order:state:" + 주문 ID
+        /** "order:state:" + 주문 ID */
+        return REDIS_KEY_PREFIX + orderId
     }
 }
